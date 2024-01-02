@@ -1,0 +1,28 @@
+version: '3'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "manage.py", "runserver", "0.0.0.0:8500"]
+    environment:
+      DEBUG: 'true'
+    ports:
+      - "8500:8500"
+    volumes:
+      - .:/taskyapi
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8500"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskynetwork
+    expose:
+      - "8500"
+
+  
+networks:
+  taskynetwork:
+    external: true
+
