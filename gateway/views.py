@@ -9,35 +9,33 @@ import os, time
 from dotenv import load_dotenv
 # Load the stored environment variables
 load_dotenv()
-
-
 import uuid, pika, json
-amq_id = os.getenv('AMQ_ID')
-# params = pika.URLParameters(amq_id) 
-     
+
+admin_url = os.getenv('ADMIN_URL')
+user_url = os.getenv('USER_URL')
+notification_url = os.getenv('NOTIFICATION_URL')
+task_url = os.getenv('TASK_SERVICE_URL')
+secret_key = os.getenv('SECRET_KEY')
+
+
 # Connection parameters
 params = pika.ConnectionParameters(
-    host='rabbit-server',
+    host='docker-taskyflow-microservice-rabbitmq-container-1',
     port=5672,
     virtual_host='/',
-    credentials=pika.PlainCredentials(username='guest', password='guest')
+    credentials=pika.PlainCredentials(username='taskyapp', password='1345'),
+    heartbeat=600,
 )
 
+# creating a connection for rabbit mq
 def establish_connection():
     while True:
         try:
             connection = pika.BlockingConnection(params)
             return connection
         except pika.exceptions.AMQPConnectionError:
-            print("Connection failed. Retrying...")
             time.sleep(10)
             
-admin_url = os.getenv('ADMIN_URL')
-user_url = os.getenv('USER_URL')
-notification_url = os.getenv('NOTIFICATION_URL')
-secret_key = os.getenv('SECRET_KEY')
-admin_secret_key = os.getenv('ADMIN_SECRET_KEY')
-task_url = os.getenv('TASK_SERVICE_URL')
 
 def tokenSplit(auth_author):
     # get access token with bearer, spilt and return teh access token
@@ -59,28 +57,27 @@ def decode_jwt(token):
     except jwt.DecodeError:
         raise jwt.DecodeError("Error decoding the token")
    
-      
+# connecting with user service via rabbit mq and checking whether the user is exist  
 def authenticate_user(auth_author, success_callback):
-    print(auth_author, '=============================')
     token = None
+    # checking the request data is a dict or not, if yes, need to check with user service whetehr user is manager or not
     if isinstance(auth_author, dict):
         need_confirm_manager = auth_author.get('manager', None)
         auth_author = auth_author.get('auth_author', None)
-        print(need_confirm_manager)
         if not auth_author or 'Bearer' not in auth_author:
             raise AuthenticationFailed("Unauthorized User")
         token = auth_author.split('Bearer ')[1]
         data = {'access': token, 'manager': 'confirm'}
         data_json = json.dumps(data)
-
         
     else:
-    # authenticating user and return booleaan value
+    # authenticating user and return boolean value
         if not auth_author or 'Bearer' not in auth_author:
             raise AuthenticationFailed("Unauthorized User")
         token = auth_author.split('Bearer ')[1]
         data = {'access': token}
         data_json = json.dumps(data)
+        
     if token is not None:
         try:
             payload = jwt.decode(token, secret_key, algorithms=['HS256'])
@@ -90,7 +87,6 @@ def authenticate_user(auth_author, success_callback):
             
             def on_reply_message_received(ch, method, properties, body):
                 data = json.loads(body).get("bool")
-    
                 if data == True:
                     success_callback('true')
                 else:
@@ -105,7 +101,6 @@ def authenticate_user(auth_author, success_callback):
             
             # Publish the message to RabbitMQ
             correlation_id = str(uuid.uuid4())
-            print('seding reques', correlation_id, data_json)
             channel.queue_declare(queue='api_gateway', durable=True)
             channel.basic_publish(
                 exchange='',
@@ -116,49 +111,8 @@ def authenticate_user(auth_author, success_callback):
                 ),
                 body=data_json
             )
-        
-        # ------------------
-        
-        
-        
-        # def on_reply_confirm_message_received(ch, method, properties, body):
-        #     data = json.loads(body).get("bool")
-  
-        #     if data == True:
-        #         success_callback('true')
-        #     else:
-        #         raise AuthenticationFailed("Authentication failed")
-            
-        # reply_queue = channel.queue_declare(queue='confirm_manager', exclusive=True)
-        # reply_to_queue_name = reply_queue.method.queue
-        # channel.basic_consume(
-        #     queue=reply_to_queue_name,
-        #     on_message_callback=on_reply_confirm_message_received,
-        #     auto_ack=True
-        # )
-        
-        
-        
-        
-        
-        # print('seding confim reques', correlation_id, data_json)
-        # channel.queue_declare(queue='api_gateway_confirm_manager', durable=True)
-        
-        
-        # channel.basic_publish(
-        #     exchange='',
-        #     routing_key='api_gateway_confirm_manager',
-        #     properties=pika.BasicProperties(
-        #         reply_to=reply_to_queue_name,
-        #         correlation_id=correlation_id,
-        #     ),
-        #     body=data_json
-        # )
-        
-    
             connection.process_data_events(time_limit=5)
-
-        
+            
         except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationFailed("Invalid token signature")
         except jwt.ExpiredSignatureError as e:
@@ -238,6 +192,7 @@ class RegisterUser(APIView):
             workspace = request.data.get('workspace')
             password = request.data.get('password')
             password2 = request.data.get('password2')
+            
             data = {
                 'name':name, 
                 'username':username, 
@@ -528,7 +483,6 @@ class ColumnsActions(APIView):
 class CardAction(APIView):
     # Given details, creating card
     def post(self, request):
-        print(request.data, 'request.datarequest.datarequest.datarequest.data')
         boolean = 'false'
         auth_author = request.headers.get('authorization')
         def success_callback(returned_value):

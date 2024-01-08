@@ -22,10 +22,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-+=wunp7dscwtr3)sz4#8ojox&va+l8&yj$9qk2k1gsm0s)3l%^'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','taskyuser-backend-1', 'taskytaskservice-backend-1', 'taskynotification-backend-1', 'taskyadmin-backend-1', 'backend', '127.0.0.1', '127.0.0.1:8000', '127.0.0.1:9000', '0.0.0.0']
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = False
+
+
+# settings.py
+
+ALLOWED_HOSTS = [
+    'www.taskyflow.online',
+    'taskyflow.online',
+    'docker-taskyflow-microservice-notificationapp-container-1',
+    'docker-taskyflow-microservice-apiservice-container-1',
+    'docker-taskyflow-microservice-userservice-container-1',
+    'docker-taskyflow-microservice-taskservice-container-1',
+    '13.60.18.4',
+    'localhost',
+    '8000',
+]
 
 
 # Application definition
@@ -129,9 +143,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    
-    'http://127.0.0.1:9000',
-    
-    'https://4d9c-103-180-2-229.ngrok-free.app'
+    "http://localhost:3000", 'https://4d9c-103-180-2-229.ngrok-free.app', 'http://localhost:8500', 'https://taskyflow.online',
+    'https://www.taskyflow.online', 'http://localhost:8000', 'http://13.60.18.4',
 ]
